@@ -1,33 +1,25 @@
-# backend/Dockerfile
-FROM python:3.12-slim
+# 1. Use a slim Python base to keep things fast
+FROM python:3.11-slim
 
+# 2. Install system tools required for PICO extraction & DB libs
+RUN apt-get update --fix-missing && apt-get install -y --no-install-recommends \
+    gcc \
+    python3-dev \
+    libpq-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# 3. Set the internal container directory
 WORKDIR /app
 
-# System dependencies - Added 'netcat-openbsd' or 'curl' for health checks
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc libpq-dev curl && rm -rf /var/lib/apt/lists/*
-
-# Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Application code
-COPY app/ app/
-
-# Copy the data folder from the root of the project into the backend container
+# 4. Copy the data folder (now that you've moved it into /backend)
 COPY ./data /data
 
-# --- NEW: Add Entrypoint Script ---
-COPY entrypoint.sh .
-# Must be root to chmod, then we switch to appuser
-USER root
-RUN chmod +x entrypoint.sh
+# 5. Copy the rest of the backend code
+COPY . .
 
-# Create non-root user
-RUN useradd -m appuser && chown -R appuser /app
-USER appuser
+# 6. Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-EXPOSE 8000
-
-# Use the script as the entrypoint
-ENTRYPOINT ["./entrypoint.sh"]
+# 7. Seed the database AND start the server
+CMD python -m app.seed_research && python app/main.py
