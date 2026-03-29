@@ -1,22 +1,17 @@
-FROM python:3.11-slim
+# Use the full python image (heavier but has all build tools pre-installed)
+FROM python:3.11
 
-# Install system dependencies
-RUN apt-get update --fix-missing && apt-get install -y --no-install-recommends \
-    gcc \
-    python3-dev \
-    libpq-dev \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
+# Set the working directory inside the container
 WORKDIR /app
 
-# Copy data from the root project folder
+# Copy the data folder from your project root
 COPY data /app/data
 
-# Copy backend code from the backend folder into the current workdir (/app)
+# Copy everything from your backend folder
 COPY backend /app
 
+# Install dependencies (standard image handles this much better)
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Seed and start using the new paths
-CMD python -m app.seed_research && python app/main.py
+# Run the seed script and then start the app
+CMD ["sh", "-c", "python -m app.seed_research && python app/main.py"]
