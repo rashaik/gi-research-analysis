@@ -8,13 +8,19 @@ WORKDIR /app
 
 # Copy lockfiles first to leverage Docker cache
 COPY package*.json ./
-RUN npm install
+RUN npm install --verbose
 
 # Copy the rest of the source code (including /src/pages, /src/theme, etc.)
 COPY . .
 
 # Run the build script defined in package.json
-RUN npm run build
+RUN npm run build -- --logLevel info
+
+# Verify the dist directory was created and has content
+RUN echo "=== Build output verification ===" && \
+    ls -la /app/dist && \
+    echo "=== dist contents ===" && \
+    find /app/dist -type f | sort
 
 # Stage 2: Serve with Nginx
 FROM nginx:stable-alpine
