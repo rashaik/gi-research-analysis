@@ -1,16 +1,30 @@
-# Use the full python image to avoid the 'gcc' build errors we saw earlier
-FROM python:3.11
+# backend/Dockerfile
+FROM python:3.12-slim
 
-# Set the working directory inside the container
 WORKDIR /app
 
-# Copy EVERYTHING from your current context (Root Directory) into /app
-# This ensures that both your 'data' and your 'app' folders are included
-COPY . .
+# System dependencies - Added 'netcat-openbsd' or 'curl' for health checks
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc libpq-dev curl && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
+# Python dependencies
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Run the seed script and then start the app
-# Using the module path 'app.seed_research' to ensure Python finds it
-CMD ["sh", "-c", "python -m app.seed_research && python app/main.py"]
+# Application code
+COPY app/ app/
+
+# --- NEW: Add Entrypoint Script ---
+COPY entrypoint.sh .
+# Must be root to chmod, then we switch to appuser
+USER root
+RUN chmod +x entrypoint.sh
+
+# Create non-root user
+RUN useradd -m appuser && chown -R appuser /app
+USER appuser
+
+EXPOSE 8000
+
+# Use the script as the entrypoint
+ENTRYPOINT ["./entrypoint.sh"]

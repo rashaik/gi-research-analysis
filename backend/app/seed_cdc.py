@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 from app.database import engine
 from app.models import MortalityData
 
-CDC_FILE_PATH = "/data/CDC_Mortality_Cleaned_1999_2024.csv"
+CDC_FILE_PATH = "data/CDC_Mortality_Cleaned_1999_2024.csv"
 
 def seed_cdc():
     print(f"--- 📊 Starting CDC Data Ingestion ---")

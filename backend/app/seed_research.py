@@ -10,10 +10,10 @@ from app.models import ResearchRecord
 logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
 
 # Path adjustments for Docker environment
-PUBMED_JSONL = "/data/pubmed_pico_results.jsonl"
-CT_JSONL = "/data/ct_pico_results.jsonl"
-PUBMED_BATCH = "/data/pubmed_batch.jsonl"
-CT_BATCH = "/data/ct_batch.jsonl"
+PUBMED_JSONL = "data/pubmed_pico_results.jsonl"
+CT_JSONL = "data/ct_pico_results.jsonl"
+PUBMED_BATCH = "data/pubmed_batch.jsonl"
+CT_BATCH = "data/ct_batch.jsonl"
 
 def parse_prompt(prompt):
     """

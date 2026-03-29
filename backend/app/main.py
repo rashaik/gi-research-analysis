@@ -55,7 +55,7 @@ app.add_middleware(
   #      "http://127.0.0.1:5173",
   #      "http://localhost:3000"
   #  ],
-    origins = [
+    allow_origins = [
     "http://localhost:3000",
     "https://gi-research-frontend-production.up.railway.app", # Add your Railway URL here
     ],
