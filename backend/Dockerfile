@@ -14,6 +14,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Application code
 COPY app/ app/
 
+# Copy the data folder from the root of the project into the backend container
+COPY data /data
+
 # --- NEW: Add Entrypoint Script ---
 COPY entrypoint.sh .
 # Must be root to chmod, then we switch to appuser
