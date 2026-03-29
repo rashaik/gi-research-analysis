@@ -1,8 +1,7 @@
-@import "tailwindcss";
-@plugin "@tailwindcss/typography";
-
 /* Professional Typography Import */
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900&family=Inter:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @theme {
   --font-serif: "Fraunces", serif;
