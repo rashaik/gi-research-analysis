@@ -1,0 +1,73 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Professional Typography Import */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900&family=Inter:wght@400;500;600;700;800&display=swap');
+
+@theme {
+  --font-serif: "Fraunces", serif;
+  --font-sans: "Inter", sans-serif;
+  
+  /* Custom Blue Palette Overrides */
+  --color-brand-navy: #1E3A8A;
+  --color-brand-blue: #3B82F6;
+
+  /* Fixed the typo here */
+  --color-stone-50: #f9f8f6;
+  --color-stone-900: #1c1917;
+
+  /* 🔹 CUSTOM ANIMATIONS */
+  @keyframes pulse-subtle {
+    0% { box-shadow: 0 0 0 0 rgba(30, 58, 138, 0.1); }
+    70% { box-shadow: 0 0 0 10px rgba(30, 58, 138, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(30, 58, 138, 0); }
+  }
+
+  @keyframes slide-up-fade {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@layer base {
+  html {
+    font-size: 112.5%; 
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 font-sans;
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, h4, .font-serif {
+    @apply font-serif font-bold tracking-tight;
+  }
+}
+
+@layer utilities {
+  .pico-scroll-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .pico-scroll-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* 🔹 AI INTERFACE UTILITIES */
+  .ai-glow {
+    animation: pulse-subtle 2s infinite;
+  }
+
+  .pico-line {
+    animation: slide-up-fade 0.5s ease forwards;
+    opacity: 0; 
+  }
+}

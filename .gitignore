@@ -1,0 +1,39 @@
+# --- Python & Backend ---
+__pycache__/
+*.py[cod]
+*$py.class
+backend/app/__pycache__/
+backend/app/services/__pycache__/
+
+# Local database files
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Frontend ---
+node_modules/
+dist/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# --- Data & Logs ---
+# Keep the directory structure but ignore individual text paper extractions
+backend/data/*
+!backend/data/.gitkeep
+
+# Ignore large raw batch files
+data/ct_batch.jsonl
+data/pubmed_batch.jsonl
+*.log
+
+# CRITICAL: Do NOT ignore the files needed for your analysis/dashboard
+!data/CDC_Mortality_Cleaned_1999_2024.csv
+!data/ct_pico_results.jsonl
+!data/pubmed_pico_results.jsonl
+
+# --- OS Specific ---
+.DS_Store
+Thumbs.db

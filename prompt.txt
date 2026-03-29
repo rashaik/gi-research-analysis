@@ -1,0 +1,203 @@
+could you replace Sources with Key Findings in Side bar. Under Key Findings add three items. 1. The Temporal lag, 2. The Demographic Gap, 3. Outcome-Mortality Mismatch. Please use the attached PPT slides 3, 4, 5 respectively.
+
+could you add an item under OVERVIEW called Pipeline (Visual Workflow) and use the slide 2 as an inspiration and build flow chart showing that we extracted PubMed Abstracts from PubMed site, Clinical Trials Abstracts from ClinicalTrials site with the help of Python program, CDC Mortality data from CDC Wonder site. Remove duplicate abstracts using bib_dedupe.bib_dedupe python package. Use MedGemma LLM to extract PICO data from the above abstracts. Final step is to triangulate the PICO data with CDC Mortality data to perform evidence gap analysis.
+
+
+Please show the following links
+
+PubMed: https://eutils.ncbi.nlm.nih.gov/entrez/eutils
+Clinical Trials: https://clinicaltrials.gov/api/v2/studies
+CDC Wonder: https://wonder.cdc.gov/ucd-icd10.html for 1999 to 2020 and https://wonder.cdc.gov/ucd-icd10-expanded.html for 2018 to 2024
+
+We need to show the data extraction criteria. If needed we need to create a separate page.
+PubMed Mesh Critirea as follows:
+   "Lean_MASLD": """
+        (
+            "Non-alcoholic Fatty Liver Disease"[MeSH]
+            OR MASLD[tiab]
+            OR "lean NAFLD"[tiab]
+            OR "non-obese NAFLD"[tiab]
+            OR "lean MASLD"[tiab]
+        )
+        AND
+        (
+            "normal weight"[tiab]
+            OR "non-obese"[tiab]
+            OR "lean"[tiab]
+            OR "Body Mass Index"[MeSH]
+            OR BMI[tiab]
+        )
+        AND
+        (
+            "Mortality"[MeSH]
+            OR "mortality"[subheading]
+            OR "Incidence"[MeSH]
+            OR "epidemiology"[subheading]
+            OR "survival"[tiab]
+            OR "prognosis"[MeSH]
+            OR "disease progression"[MeSH]
+            OR "liver-related"[tiab]
+            OR "cardiovascular"[tiab]
+            OR "fibrosis"[tiab]
+            OR "clinical outcome"[tiab]
+            OR "cohort"[tiab]
+        )
+        AND "adult"[MeSH]
+        AND English[lang]
+        AND "humans"[MeSH]
+    """,
+
+    "MASH_Fibrosis": """
+        (
+            "Non-alcoholic Fatty Liver Disease"[MeSH]
+            OR MASH[tiab]
+            OR NASH[tiab]
+            OR "metabolic steatohepatitis"[tiab]
+            OR "metabolic associated steatohepatitis"[tiab]
+        )
+        AND
+        (
+            "Liver Cirrhosis"[MeSH]
+            OR "liver fibrosis"[tiab]
+            OR "hepatic fibrosis"[tiab]
+            OR "fibrosis stage"[tiab]
+            OR "fibrosis regression"[tiab]
+            OR "NASH resolution"[tiab]
+            OR "fibrosis progression"[tiab]
+            OR Resmetirom[tiab]
+            OR semaglutide[tiab]
+            OR lanifibranor[tiab]
+            OR obeticholic[tiab]
+            OR tirzepatide[tiab]
+            OR aramchol[tiab]
+            OR efruxifermin[tiab]
+            OR "drug therapy"[subheading]
+            OR "treatment outcome"[MeSH]
+        )
+        AND
+        (
+            "Clinical Trial"[pt]
+            OR "Randomized Controlled Trial"[pt]
+            OR "Controlled Clinical Trial"[pt]
+            OR "Meta-Analysis"[pt]
+            OR "Observational Study"[pt]
+        )
+        AND "adult"[MeSH]
+        AND English[lang]
+        AND "humans"[MeSH]
+    """,
+
+    "MASLD_HCC": """
+        (
+            "Non-alcoholic Fatty Liver Disease"[MeSH]
+            OR MASLD[tiab]
+            OR NAFLD[tiab]
+            OR "metabolic dysfunction-associated"[tiab]
+            OR "metabolic syndrome"[tiab]
+        )
+        AND
+        (
+            "Carcinoma, Hepatocellular"[MeSH]
+            OR "hepatocellular carcinoma"[tiab]
+            OR HCC[tiab]
+            OR "intrahepatic cholangiocarcinoma"[tiab]
+            OR "Liver Neoplasms"[MeSH]
+            OR "liver cancer"[tiab]
+        )
+        AND
+        (
+            "Mortality"[MeSH]
+            OR "mortality"[subheading]
+            OR "Incidence"[MeSH]
+            OR "survival"[subheading]
+            OR "prognosis"[MeSH]
+            OR "overall survival"[tiab]
+            OR "hazard ratio"[tiab]
+            OR "risk factor"[tiab]
+            OR "etiology"[MeSH]
+            OR "cohort"[tiab]
+        )
+        AND "adult"[MeSH]
+        AND English[lang]
+        AND "humans"[MeSH]
+    """,
+
+    Exclusions:
+    always_exclude = [
+        "Editorial[pt]",
+        "Letter[pt]",
+        "Comment[pt]",
+        '"Case Reports"[pt]',
+        '"animals"[MeSH:noexp]',          # excludes animal studies, not human subterms
+        '"In Vitro Techniques"[MeSH]',
+        '"child"[MeSH:noexp]',            # excludes pediatric studies
+        '"adolescent"[MeSH]',             # excludes adolescent studies
+        '"infant"[MeSH]',                 # excludes infant studies
+    ]
+
+
+Clinical Trials extraction criteria for three niches
+    _NICHE_CONDITION: Dict[str, str] = {
+    "Lean_MASLD":    "Non-alcoholic fatty liver disease",
+    "MASH_Fibrosis": "NASH",
+    "MASLD_HCC":     "Hepatocellular carcinoma",
+}
+
+ params = {
+        "query.cond":           condition,
+        "filter.overallStatus": "RECRUITING,ACTIVE_NOT_RECRUITING,COMPLETED",
+        "pageSize":             100,
+    }
+
+
+ CDC Wonder data by the following groups
+ - Year
+ - Ten year age group / Sex / Race
+ - ICD10 - 113 Cause List
+ - ICD10 Codes C22, K75, and K76
+
+"Dataset: Underlying Cause of Death, 2018-2024, Single Race"
+"Query Parameters:"
+"Title: ICD-10 Mortality data - 2024 - Age group"
+"ICD-10 Codes: C22.0 (Liver cell carcinoma - Malignant neoplasms); C22.1 (Intrahepatic bile duct carcinoma - Malignant"
+"neoplasms); C22.2 (Hepatoblastoma - Malignant neoplasms); C22.3 (Angiosarcoma of liver - Malignant neoplasms); C22.4 (Other"
+"sarcomas of liver - Malignant neoplasms); C22.7 (Other specified carcinomas of liver - Malignant neoplasms); C22.9 (Liver,"
+"unspecified - Malignant neoplasms); K75.0 (Abscess of liver); K75.1 (Phlebitis of portal vein); K75.2 (Nonspecific reactive"
+"hepatitis); K75.3 (Granulomatous hepatitis, not elsewhere classified); K75.4 (Autoimmune hepatitis); K75.8 (Other specified"
+"inflammatory liver diseases); K75.9 (Inflammatory liver disease, unspecified); K76.0 (Fatty (change of) liver, not elsewhere"
+"classified); K76.1 (Chronic passive congestion of liver); K76.2 (Central haemorrhagic necrosis of liver); K76.3 (Infarction of"
+"liver); K76.4 (Peliosis hepatis); K76.5 (Hepatic veno-occlusive disease); K76.6 (Portal hypertension); K76.7 (Hepatorenal"
+"syndrome); K76.8 (Other specified diseases of liver); K76.9 (Liver disease, unspecified)"
+"Group By: Year; ICD-10 113 Cause List; Ten-Year Age Groups"
+"Show Totals: Disabled"
+"Show Zero Values: False"
+"Show Suppressed: True"
+"Calculate Rates Per: 100,000"
+"Rate Options: Default intercensal populations for years 2001-2009 (except Infant Age Groups)"
+"---"
+"Help: See http://wonder.cdc.gov/wonder/help/ucd-expanded.html for more information."
+"---"
+"Query Date: Mar 15, 2026 3:59:55 PM"
+
+"Dataset: Underlying Cause of Death, 1999-2020"
+"Query Parameters:"
+"Title: ICD-10 Mortality data"
+"ICD-10 Codes: C22.0 (Liver cell carcinoma - Malignant neoplasms); C22.1 (Intrahepatic bile duct carcinoma - Malignant"
+"neoplasms); C22.2 (Hepatoblastoma - Malignant neoplasms); C22.3 (Angiosarcoma of liver - Malignant neoplasms); C22.4 (Other"
+"sarcomas of liver - Malignant neoplasms); C22.7 (Other specified carcinomas of liver - Malignant neoplasms); C22.9 (Liver,"
+"unspecified - Malignant neoplasms); K75.0 (Abscess of liver); K75.1 (Phlebitis of portal vein); K75.2 (Nonspecific reactive"
+"hepatitis); K75.3 (Granulomatous hepatitis, not elsewhere classified); K75.4 (Autoimmune hepatitis); K75.8 (Other specified"
+"inflammatory liver diseases); K75.9 (Inflammatory liver disease, unspecified); K76.0 (Fatty (change of) liver, not elsewhere"
+"classified); K76.1 (Chronic passive congestion of liver); K76.2 (Central haemorrhagic necrosis of liver); K76.3 (Infarction of"
+"liver); K76.4 (Peliosis hepatis); K76.5 (Hepatic veno-occlusive disease); K76.6 (Portal hypertension); K76.7 (Hepatorenal"
+"syndrome); K76.8 (Other specified diseases of liver); K76.9 (Liver disease, unspecified)"
+"Group By: Year; ICD-10 113 Cause List; Ten-Year Age Groups"
+"Show Totals: Disabled"
+"Show Zero Values: False"
+"Show Suppressed: True"
+"Calculate Rates Per: 100,000"
+"Rate Options: Default intercensal populations for years 2001-2009 (except Infant Age Groups)"
+"---"
+"Help: See http://wonder.cdc.gov/wonder/help/ucd.html for more information."
+"---"
+"Query Date: Mar 15, 2026 3:57:09 PM"

@@ -1,0 +1,47 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography"; /* 👈 REQUIRED for the 'prose' classes in ExplorerPage */
+
+/* Professional Typography Import */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900&family=Inter:wght@400;500;600;700;800&display=swap');
+
+@theme {
+  --font-serif: "Fraunces", serif;
+  --font-sans: "Inter", sans-serif;
+  
+  /* Custom Blue Palette Overrides */
+  --color-brand-navy: #1E3A8A;
+  --color-brand-blue: #3B82F6;
+
+  /* Ensure v4 recognizes your stone colors from the config */
+  --color-stone-50: #f9f8f6;
+  --color-stone-900: #1c1917;
+}
+
+@layer base {
+  html {
+    font-size: 112.5%; 
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 font-sans;
+    line-height: 1.6;
+  }
+
+  /* Apply the Fraunces font to all headers for the academic look */
+  h1, h2, h3, h4, .font-serif {
+    @apply font-serif font-bold tracking-tight;
+  }
+}
+
+/* Custom utility for the PICO Explorer boxes */
+@layer utilities {
+  .pico-scroll-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .pico-scroll-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
