@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  # ── PostgreSQL Database ─────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -24,33 +24,31 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    restart: unless-stopped # 👈 Fixed indentation (was inside 'build')
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env  # Loads your NCBI, GROQ, and LLM keys
     depends_on:
       postgres:
         condition: service_healthy
-      ollama:
-        condition: service_started
     environment:
+      # Internal Docker networking uses the service name 'postgres'
       DATABASE_URL: postgresql://giresearch:giresearch@postgres:5432/giresearch
-      NCBI_API_KEY: ${NCBI_API_KEY:-}
       MEDGEMMA_BACKEND: ${MEDGEMMA_BACKEND:-ollama}
-      # 🚀 Use host.docker.internal to access Ollama on your Mac
       OLLAMA_HOST: http://host.docker.internal:11434  
       OLLAMA_MODEL: "medgemma-gi"
-      PUBMED_PICO_JSONL: /data/pubmed_pico_results.jsonl
-      CDC_CSV: /data/CDC_Mortality_Cleaned_1999_2024.csv
-      GROQ_API_KEY: ${GROQ_API_KEY:-}
-      GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
+      # Paths relative to the WORKDIR (/app) inside the container
+      PUBMED_PICO_JSONL: data/pubmed_pico_results.jsonl
+      CDC_CSV: data/CDC_Mortality_Cleaned_1999_2024.csv
       LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
     extra_hosts:
-      - "host.docker.internal:host-gateway" # 👈 Required for Mac-to-Container comms
+      - "host.docker.internal:host-gateway" # Required for Mac-to-Ollama comms
     volumes:
-      - ./data:/data:rw
-      - ./backend:/app
+      - ./backend:/app          # Maps your code for live-reloading
+      - ./backend/data:/app/data # Maps your MASLD/CDC data specifically
     ports:
       - "8000:8000"
 
-  # ── React Frontend ─────────────────────────────────────────────────────────
+  # ── React Frontend ──────────────────────────────────────────────────────────
   frontend:
     build:
       context: ./frontend
@@ -60,7 +58,7 @@ services:
       - backend
     volumes:
       - ./frontend:/app
-      - /app/node_modules 
+      - /app/node_modules # Anonymous volume to prevent local override of modules
     ports:
       - "3000:80"      
       - "5173:5173"    
@@ -69,17 +67,7 @@ services:
       - CHOKIDAR_USEPOLLING=true 
       - WATCHPACK_POLLING=true
 
-  # ── Ollama (Local AI) ───────────────────────────────────────────────────────
-  # NOTE: Keep this only if you want a separate containerized Ollama. 
-  # If you are using the Mac Desktop App, your backend already points to it via 'host.docker.internal'.
-  ollama:
-    image: ollama/ollama:latest
-    restart: unless-stopped
-    volumes:
-      - ollama_data:/root/.ollama
-    # No ports needed if backend uses host.docker.internal, 
-    # but kept for CLI access.
-
+  # ── Database Management (pgAdmin) ───────────────────────────────────────────
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: gi-research-pgadmin
@@ -95,5 +83,4 @@ services:
 
 volumes:
   postgres_data:
-  ollama_data:
   pgadmin-data:

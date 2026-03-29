@@ -19,21 +19,15 @@ dist/
 .env.test.local
 .env.production.local
 
-# --- Data & Logs ---
-# Keep the directory structure but ignore individual text paper extractions
-backend/data/*
-!backend/data/.gitkeep
-
-# Ignore large raw batch files
-data/ct_batch.jsonl
-data/pubmed_batch.jsonl
+# --- Logs & OS ---
 *.log
-
-# CRITICAL: Do NOT ignore the files needed for your analysis/dashboard
-!data/CDC_Mortality_Cleaned_1999_2024.csv
-!data/ct_pico_results.jsonl
-!data/pubmed_pico_results.jsonl
-
-# --- OS Specific ---
 .DS_Store
 Thumbs.db
+
+# --- Data Persistence (CRITICAL for PICO Explorer) ---
+# We explicitly allow these so Railway can read them for your dashboard
+!backend/data/pubmed_batch.jsonl
+!backend/data/ct_batch.jsonl
+!backend/data/pubmed_pico_results.jsonl
+!backend/data/ct_pico_results.jsonl
+!backend/data/CDC_Mortality_Cleaned_1999_2024.csv

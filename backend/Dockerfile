@@ -3,7 +3,7 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# System dependencies - Added 'netcat-openbsd' or 'curl' for health checks
+# System dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc libpq-dev curl && rm -rf /var/lib/apt/lists/*
 
@@ -11,17 +11,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Application code
-COPY app/ app/
+# --- FIX 1: Application Code Pathing ---
+# Instead of app/ app/, copy everything in the current context to /app
+# This ensures 'app/' and 'data/' are siblings in the root of the container
+COPY . . 
 
-# --- NEW: Add Entrypoint Script ---
-COPY entrypoint.sh .
-# Must be root to chmod, then we switch to appuser
+# --- FIX 2: Permissions ---
+# Switch to root to handle permissions, then back to appuser
 USER root
-RUN chmod +x entrypoint.sh
+RUN chmod +x entrypoint.sh && \
+    useradd -m appuser && \
+    chown -R appuser /app
 
-# Create non-root user
-RUN useradd -m appuser && chown -R appuser /app
 USER appuser
 
 EXPOSE 8000
