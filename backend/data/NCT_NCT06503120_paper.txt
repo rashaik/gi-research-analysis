@@ -1,0 +1,103 @@
+STATUS: ACTIVE_NOT_RECRUITING  |  PHASE: NA
+
+STUDY DESCRIPTION:
+Subject selection
+
+1. Screening of potential subjects at the out-patient clinic Consecutive patients attending the hepatology of the Taichung Veterans General Hospital will be screened. Patients with features of fatty liver on ultrasound scan (bright echotexture, reduced ultrasound penetrance, and blurred vascular markings), magnetic resonance imaging will be screened after signing informed written consent. The screening procedure is described in section Screening.
+
+Randomization Subjects meeting the inclusion and exclusion criteria will be randomized (1:1) to participate in an iso-calorie Mediterranean diet (MD) intervention or to receive simple lifestyle advice alone. Randomization is carried out through the use of computer-generated list of random numbers. Treatment assignment will be revealed in sealed envelopes.
+
+Trial treatments
+
+1. Blinding Radiologists who evaluate the magnetic resonance image and physicians doing transient elastography by Fibroscan will be blinded to the treatment assignment.
+2. Dietary intervention program
+
+Nutritionist Education Process:
+
+1. Utilize the Taiwan version of the Mediterranean Diet Adherence Screener (MEDAS), validated by our team (as shown below), dividing its 14 items into seven question groups. Based on previous studies, common scoring patterns among Taiwanese people, and factors likely to change with food provision (e.g., olive oil and nuts), the priority sequence for recommendations is as follows:
+
+   I. Olive oil-related (Derived from items 1,2) II. Protein sources (Items 5,9,10,13) III. Nuts (Item 12) IV. Fruits and vegetables (Items 3,4) V. Sugary drinks and sweets (Items 7,11) VI. Cream (Item 6) VII. Quality of carbohydrates (Items 8,14)
+2. Before each educational session, collect the participant's MEDAS score and a three-day photographic food diary. Based on this data, determine the two to three question groups where the participant should prioritize improvement.
+3. Conduct online educational sessions at Weeks 0, 3, 6, and 9, lasting 10 to 15 minutes each, focusing on the relevant question groups. Tailor the education to the participant's dietary habits, such as the frequency and type of dining out, and provide two to three graphic-based suggestions after each session, highlighting key points for both dining out and home cooking.
+4. For the intake of olive oil, we recommend using a 15mL measuring cup or tablespoon, and suggest adding it to vegetable juice or drizzling it over vegetables. We intend to start with 30mL of olive oil and gradually increase it if the patients tolerate well after 3 to 6 weeks.
+5. The ultimate goal is to increase the MEDAS score by more than five points within 12 weeks without calorie restriction.
+6. After the initial education session, provide participants with a common Q and A sheet, online, based on the dietary advice given. We also provide education materials, a food-group list specifying preferred choices and approximate numbers and size of servings to consume per day.
+7. Conduct a 3-minute telephone interview within one week after each educational session to understand the participants' adherence and the challenges they face.
+8. The investigators will provide an adequate amount of mixed nuts (15g per day) and extra virgin olive oil (60mL per day). The investigators will also provide an electronic scale.
+9. At the Week 0 and Week 6 follow-up appointments, lunch will be provided.
+
+   c. Standard care: Simple lifestyle advice A 10-minute talk on the epidemiology of MASLD and balanced diet, resembling routine clinical practice.
+
+   d. Compliance: At each scheduled visit, subjects completed a standardized compliance questionnaire and Taiwan version of the Mediterranean Diet Adherence Screener (MEDAS).
+
+   e. Exercise: Subjects were advised to maintain their usual level of activity for the duration of the intervention f. Accessibility: All subjects received equivalent intensity of care in terms of opportunities for contact.
+
+   Trial procedures
+   1. Screening
+
+      Screening will be performed for suitability of inclusion at the original clinic. Informed consent will be obtained prior to all screening assessment. After obtaining informed consent, the following screening will be performed:
+
+      ● Verify inclusion/exclusion criteria.
+
+      ● Record medical and medication history from the national insurance database.
+
+      ● Physical examination including subject's height, weight, waist circumference, hip circumference.
+
+      ● Clinical laboratory tests including complete blood count, prothrombin time, liver function, renal function, HBsAg, anti-HCV, ANA.
+
+      ● Items used for screening other liver diseases, such as viral hepatitis, autoimmune or cholestatic liver diseases, and Wilson's disease, that have been checked within the past year do not need to be rechecked during the screening process
+      * Arrange Magnetic Resonance Spectrum (MRS) and Magnetic Resonance Imaging-Proton Density Fat Fraction (MRI-PDFF).
+      * During the initial screening, the investigators hold a formal outpatient session to outline the benefits of the Mediterranean diet, presenting current evidence, and inquiring if patients are interested in dietary treatment. Physicians also evaluate participants' acceptance of olive oil during the session by serving a raw salad with olive oil dressing.
+   2. Baseline randomization visit Randomization will be performed after the above procedure.
+   3. Procedures and assessments after randomization ● The questionnaires to be obtained include: a Taiwanese version of the Mediterranean Diet Adherence Screener (T-MEDAS), a validated food frequency questionnaire, the WHO Quality of Life (WHO QOL) questionnaire, and the International Physical Activity Questionnaire
+
+      * Clinical lab tests include liver function, renal function, aspartate aminotransferase, gamma-glutamyl transferase, fasting glucose, HbA1c, lipid profile, HDL-cholesterol, LDL-cholesterol and insulin, serum metabolites, stool microbiome. If the screening is within four weeks, a repeat blood test will not be required.
+      * Subjects will obtain a 24-hour telephone to report any serious adverse events between the visits.
+
+   Sample size calculation In a previous trial, 25% to 32.4% relative reduction in hepatic steatosis was achieved by Mediterranean diet for 12 weeks. Another trial showed 39% relative reduction in hepatic steatosis in those having Mediterranean diet for 12 weeks. A previous NAFLD study performed in Hong Kong, with a non-obese population, the mean intrahepatic fat was 11.0 ± 5.6%.7 Assuming that 28% relative reduction could be achieved in patients with Mediterranean diet intervention group. The investigators aimed to recruit 88 subjects. Allowing for 10% dropout, this would provide 78 subjects per treatment group to detect diet-induced differences, based on a significance level of 5%, power of at least 80%.
+
+   Statistical analysis
+
+   a. Data analysis
+
+   a-1 Intention-to-treat population The intention-to-treat population includes all participants who have attended the randomization. The intention-to-treat population will be used for the endpoint analysis. Patients who withdraw from the study or refuse to have follow-up will be considered to have stationary intrahepatic fat.
+   1. 2 Per-protocol population Those who have at least two visits, including the week 12 visit are included for the per-protocol analysis.
+
+   a-3 Demographic data Randomized subjects will be included in the demographics characteristics analysis and the number and percentage was used for categorical variables, while mean, standard deviation was used for continuous variables.
+   1. 4 Analysis of the primary endpoint Analysis of the primary endpoint will be summarized by the difference between the intrahepatic fat levels for each treatment arm. The null and alternative hypotheses are: no difference between the intra-hepatic fat levels in each treatment arm at week 12.
+
+   Comparison of the primary endpoint between the treatment groups will be performed using repeated measures analysis of covariance (ANCOVA) to examine differences in outcomes between diet groups at week 12 after adjusting for baseline values. Statistical differences within groups were analyzed by paired t tests. Testing will be performed at a 5% significance level.
+
+   b. Secondary endpoints Comparison of the treatment groups for all categorical secondary endpoints will be performed on the intention-to-treat population. A two-sided Student's t test will be used for continuous secondary endpoints. Testing will be performed at a 5% significance level. Chi-square test or Fisher exact test will be used for continuous variable. Testing for treatment group differences will be performed at a 5% significance level.
+
+   d. Safety analysis All participants in the intention-to-treat population will be analyzed for vital signs, laboratory data and treatment related adverse events.
+
+ELIGIBILITY CRITERIA:
+Inclusion Criteria:
+
+* Willing to change diet for at least three months (accepting reduced sugar, less processed foods, reduced red meat, and following a Mediterranean diet with olive oil, high-fiber foods, vegetables, fruits, nuts, and legumes)
+* Intrahepatic triglyceride content (IHTG) of 5%
+* Age 18 to 70 years
+* Fulfill the diagnosis of Metabolic Dysfunction-Associated Steatotic Liver Disease
+* Baseline Mediterranean Diet Adherence Screener (T-MEDAS) score equal to or less than 5
+* Participants must not have initiated any new probiotic treatment in the past three months or must have been on a stable probiotic regimen for at least three months, which they are willing to continue for the duration of the study
+
+Exclusion Criteria:
+
+* Other liver disease (viral hepatitis, autoimmune or cholestatic liver disease, Wilson's disease, hemochromatosis, or alpha-1 anti-trypsin deficiency)
+* Unstable body weight (variation \>5% within the preceding 3-month period)
+* Current use of weight loss medications (e.g., Liraglutide)
+* Current use of pioglitazone
+* Unstable diabetes (HbA1c \>8.5%)
+* Decompensated cirrhosis (international normalized ratio \>1.3, platelets \<100 × 109/mm, bilirubin \>20 mmol/L, albumin \<35 g/L, ascites, or hepatic encephalopathy)
+* A serum creatinine level ≥ 2mg/dL
+* Presence of active cancer or undergoing chemotherapy either at present or in the prior three years
+* Major illness that might require hospitalization
+* Pregnancy or lactation for women
+* Participation in another trial
+* Chronic treatment with warfarin (given its interaction with vitamin K)
+* Being implanted with a pacemaker or platinum implant (due to inability to undergo magnetic resonance imaging included in the study design)
+* Alcohol consumption above 30 g per week in men or 20 g per week in women
+
+REGISTRATION CONTACTS:
+Contacts not listed.
