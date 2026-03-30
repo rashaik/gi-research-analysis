@@ -53,7 +53,8 @@ export default function ExtractRecentPage() {
     setDebugMsg("Initializing multi-source search...");
 
     try {
-      const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+      // const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+      const API_BASE = import.meta.env.VITE_API_BASE || '';
       const response = await axios.post(`${API_BASE}/api/search`, {
         query: query,
         provider: provider,

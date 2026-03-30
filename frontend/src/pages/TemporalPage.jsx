@@ -45,7 +45,9 @@ export default function TemporalPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+        // const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+        const API_BASE = import.meta.env.VITE_API_BASE || '';
+
         // 1. Update the URL to match the FastAPI route we built
         const response = await axios.get(`${API_BASE}/api/analytics/temporal-mismatch`);
         

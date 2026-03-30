@@ -4,7 +4,8 @@ import { Card, Badge } from './Cards';
 import { T } from '../theme/tokens';
 
 const NICHES = ['Lean_MASLD', 'MASH_Fibrosis', 'MASLD_HCC'];
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+// const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 export default function ExtractPaperPage() {
   const [sourceFilter, setSourceFilter] = useState('ALL');

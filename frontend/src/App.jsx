@@ -18,7 +18,8 @@ export default function App() {
   const [page, setPage] = useState('intro');
   const [backendOk, setBackendOk] = useState(false);
 
-  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+  // const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+  const API_BASE = import.meta.env.VITE_API_BASE || '';
 
   useEffect(() => {
     const checkConnection = async () => {
