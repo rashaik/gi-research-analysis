@@ -21,13 +21,21 @@ export default function ExplorerPage() {
     const fetchList = async () => {
       try {
         const res = await axios.get(`${API_BASE}/api/research/list`);
-        setRecords(res.data);
-        setFilteredRecords(res.data);
-        if (res.data.length > 0) {
-          setSelectedId(res.data[0].external_id);
+        
+        // SAFE CHECK: Ensure res.data is actually an array
+        const data = Array.isArray(res.data) ? res.data : [];
+        
+        setRecords(data);
+        setFilteredRecords(data);
+        
+        if (data.length > 0) {
+          setSelectedId(data[0].external_id);
         }
       } catch (err) {
-        console.error(err);
+        console.error("Fetch error:", err);
+        // Fallback to empty arrays so the UI doesn't break
+        setRecords([]);
+        setFilteredRecords([]);
       }
     };
     fetchList();
