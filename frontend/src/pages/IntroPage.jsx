@@ -9,7 +9,8 @@ export default function IntroPage() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+        // const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+        const API_BASE = import.meta.env.VITE_API_BASE || '';
         const [statsRes] = await Promise.all([
           axios.get(`${API_BASE}/api/stats`)
         ]);
