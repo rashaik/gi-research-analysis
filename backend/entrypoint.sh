@@ -9,8 +9,12 @@ COUNT=0
 
 until python3 -c "
 import os, psycopg2, sys
+url = os.environ.get('DATABASE_URL')
+if not url:
+    print('ERROR: DATABASE_URL environment variable is not set!', file=sys.stderr)
+    sys.exit(1)
 try:
-    psycopg2.connect(os.environ['DATABASE_URL'])
+    psycopg2.connect(url)
     print('Postgres is ready!')
 except Exception as e:
     print(f'Not ready: {e}', file=sys.stderr)
@@ -28,9 +32,11 @@ done
 echo "--- ⏳ Starting Database Initialization ---"
 python3 -c "from app.database import init_db; init_db()"
 
-echo "--- 📖 Seeding GI Research & CDC Data ---"
-python3 -m app.seed_research
-python3 -m app.seed_cdc
+# --- Seeding is intentionally skipped on deploy ---
+# Data is already loaded in the database.
+# To re-seed manually, run:
+#   python3 -m app.seed_research
+#   python3 -m app.seed_cdc
 
 echo "--- 🚀 Starting FastAPI with 2 Workers ---"
 exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
