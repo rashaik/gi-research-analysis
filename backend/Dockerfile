@@ -1,31 +1,39 @@
-# backend/Dockerfile
+# Use a stable Python 3.12 base
 FROM python:3.12-slim
 
+# Set the working directory
 WORKDIR /app
 
-# System dependencies
+# Install system dependencies (including libpq for Postgres and curl for health checks)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc libpq-dev curl && rm -rf /var/lib/apt/lists/*
+    gcc \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Python dependencies
+# Install Python dependencies first to leverage Docker caching
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# --- FIX 1: Application Code Pathing ---
-# Instead of app/ app/, copy everything in the current context to /app
-# This ensures 'app/' and 'data/' are siblings in the root of the container
-COPY . . 
+# Copy all backend code and data (ensuring .jsonl files in /data are included)
+COPY . .
 
-# --- FIX 2: Permissions ---
-# Switch to root to handle permissions, then back to appuser
+# --- CRITICAL FIX: Script Execution ---
+# We use root temporarily to ensure the script is executable and line endings are fixed
 USER root
-RUN chmod +x entrypoint.sh && \
+
+# This 'sed' command is a lifesaver—it removes hidden Windows carriage returns 
+# that often break entrypoint scripts on Linux servers.
+RUN sed -i 's/\r$//' entrypoint.sh && \
+    chmod +x entrypoint.sh && \
     useradd -m appuser && \
     chown -R appuser /app
 
+# Switch to non-root user for production security
 USER appuser
 
+# Document that the app listens on 8000 (standard for FastAPI)
 EXPOSE 8000
 
-# Use the script as the entrypoint
-ENTRYPOINT ["./entrypoint.sh"]
+# Use the explicit shell execution to avoid "Exec format error"
+ENTRYPOINT ["/bin/sh", "/app/entrypoint.sh"]
