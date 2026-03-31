@@ -28,18 +28,6 @@ from sqlalchemy.dialects.postgresql import insert
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-
-    script_env = os.environ.copy()
-    script_env["PYTHONPATH"] = os.getcwd()
-
-    print("--- 🔄 Synchronizing Research Repositories ---")
-    try:
-        subprocess.run(["python", "app/seed_research.py"], check=True, env=script_env)
-        subprocess.run(["python", "app/seed_cdc.py"], check=True, env=script_env)
-        print("--- ✅ Seeding Complete ---")
-    except Exception as e:
-        print(f"--- ⚠️ Seeding failed or skipped: {e} ---")
-
     yield
 
 
@@ -50,14 +38,10 @@ app = FastAPI(title="GI Research API", lifespan=lifespan)
 # =========================
 app.add_middleware(
     CORSMiddleware,
-  #  allow_origins=[
-  #      "http://localhost:5173",
-  #      "http://127.0.0.1:5173",
-  #      "http://localhost:3000"
-  #  ],
-    allow_origins = [
-    "http://localhost:3000",
-    "https://gi-research-frontend-production.up.railway.app", # Add your Railway URL here
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://go-research-analysis-frontend.onrender.com",  # ✅ your Render frontend
     ],
     allow_credentials=True,
     allow_methods=["*"],
