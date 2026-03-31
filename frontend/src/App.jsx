@@ -13,13 +13,11 @@ import DemographicGapPage from './pages/DemographicGapPage';
 import OutcomeMismatchPage from './pages/OutcomeMismatchPage';
 import ExtractRecentPage from './pages/ExtractRecentPage';
 import ExtractPaperPage from './pages/ExtractPaperPage';
+import { API_BASE } from './config';
 
 export default function App() {
   const [page, setPage] = useState('intro');
   const [backendOk, setBackendOk] = useState(false);
-
-  // const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
   useEffect(() => {
     const checkConnection = async () => {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Card, Badge } from './Cards';
 import { T } from '../theme/tokens';
+import { API_BASE } from '../config';
 
 export default function IntroPage() {
   const [dbStats, setDbStats] = useState({ cdc_count: 0, research_count: 0 });
@@ -10,7 +11,6 @@ export default function IntroPage() {
     const fetchStats = async () => {
       try {
         // const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
-        const API_BASE = import.meta.env.VITE_API_BASE || '';
         const [statsRes] = await Promise.all([
           axios.get(`${API_BASE}/api/stats`)
         ]);
