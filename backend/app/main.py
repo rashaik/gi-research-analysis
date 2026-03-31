@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import subprocess
 from typing import Optional, List, Dict
@@ -41,7 +42,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:3000",
-        "https://go-research-analysis-frontend.onrender.com",  # ✅ your Render frontend
+        "https://go-research-analysis-frontend.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -163,19 +164,17 @@ async def extract_recent(params: ExtractParams, session: Session = Depends(get_s
         results = []
         source_label = "PubMed" if params.source == "PubMed" else "ClinicalTrials"
         print(f"--- 🚀 Starting Extraction Pipeline: {source_label} | {params.niche} ---")
-        
+
         if params.source == "PubMed":
-            # Using new consolidated logic
             pubmed_ids = search_pubmed(params.niche, max_results=params.max_abstracts)
             abstracts = fetch_abstracts(pubmed_ids)
-            results = [{"source": "PubMed", "pmid": pid, "abstract": abs_text, "title": f"PubMed {pid}", "year": 2024} 
+            results = [{"source": "PubMed", "pmid": pid, "abstract": abs_text, "title": f"PubMed {pid}", "year": 2024}
                        for pid, abs_text in zip(pubmed_ids, abstracts)]
         else:
-            # Using new consolidated logic
             trials = fetch_clinical_trials(params.niche, page_size=params.max_abstracts)
-            results = [{"source": "ClinicalTrials", "nct_id": t["id"], "abstract": t["abstract"], "title": f"Trial {t['id']}", "year": 2024} 
+            results = [{"source": "ClinicalTrials", "nct_id": t["id"], "abstract": t["abstract"], "title": f"Trial {t['id']}", "year": 2024}
                        for t in trials]
-        
+
         print(f"--- 📥 Extraction Engine returned {len(results)} raw records ---")
 
         final_records = []
@@ -188,16 +187,13 @@ async def extract_recent(params: ExtractParams, session: Session = Depends(get_s
         existing_count = 0
 
         for res in results:
-            # Safely build ext_id
             sid = res.get('pmid') or res.get('nct_id')
             if not sid or sid == "N/A" or sid == "":
                 continue
 
             ext_id = f"{res['source']}_{sid}"
-            
-            # Extract PICO using selected backend
             pico_json = extract_pico(res["abstract"], backend=params.llm_backend)
-            
+
             record_data = {
                 "external_id": ext_id,
                 "source": res["source"],
@@ -209,7 +205,6 @@ async def extract_recent(params: ExtractParams, session: Session = Depends(get_s
                 "pico_text": str(pico_json)
             }
 
-            # Save to DB
             existing = session.exec(
                 select(ResearchRecord).where(ResearchRecord.external_id == ext_id)
             ).first()
@@ -233,7 +228,9 @@ async def extract_recent(params: ExtractParams, session: Session = Depends(get_s
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
+
 from app.services.paper_service import fetch_pubmed_full_text, fetch_ct_full_text
+
 
 @app.post("/api/extract/paper")
 async def extract_paper(request: dict, session: Session = Depends(get_session)):
@@ -244,7 +241,6 @@ async def extract_paper(request: dict, session: Session = Depends(get_session)):
     if not paper_id:
         raise HTTPException(status_code=400, detail="Missing ID")
 
-    # --- 🛡️ Validation ---
     if source == "PMID" and not paper_id.isdigit():
         raise HTTPException(status_code=400, detail=f"Invalid PMID format: '{paper_id}'. Must be numeric.")
     if source == "NCT" and not paper_id.startswith("NCT"):
@@ -255,9 +251,9 @@ async def extract_paper(request: dict, session: Session = Depends(get_session)):
             full_text = fetch_pubmed_full_text(paper_id)
         else:
             full_text = fetch_ct_full_text(paper_id)
-            
+
         ext_id = f"{source}_{paper_id}"
-        
+
         data_dir = "/app/data"
         if not os.path.exists(data_dir):
             data_dir = "data"
@@ -265,11 +261,10 @@ async def extract_paper(request: dict, session: Session = Depends(get_session)):
 
         filename = f"{ext_id}_paper.txt"
         file_path = os.path.join(data_dir, filename)
-        
+
         with open(file_path, 'w') as f:
             f.write(full_text)
 
-        # Update DB record if exists, or create new
         record = session.exec(
             select(ResearchRecord).where(ResearchRecord.external_id == ext_id)
         ).first()
@@ -278,7 +273,6 @@ async def extract_paper(request: dict, session: Session = Depends(get_session)):
             record.full_text = full_text
             session.add(record)
         else:
-            # Create a shell record only if ID is valid
             record = ResearchRecord(
                 external_id=ext_id,
                 source="PubMed" if source == "PMID" else "ClinicalTrials",
@@ -315,8 +309,6 @@ async def list_research(session: Session = Depends(get_session)):
         ).all()
 
         for record in results:
-
-            # Fix missing source
             if not record.source:
                 record.source = (
                     "ClinicalTrials" if "NCT" in record.external_id else "PubMed"
@@ -326,6 +318,12 @@ async def list_research(session: Session = Depends(get_session)):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def extract_pico_section(label: str, text: str) -> str:
+    pattern = rf'\*\s*\*\*{label}:\*\*\s*(.*?)(?=\*\s*\*\*|\Z)'
+    match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
+    return match.group(1).strip() if match else text[:300]
 
 
 @app.get("/api/research/{external_id}")
@@ -339,43 +337,30 @@ async def get_research_detail(external_id: str, session: Session = Depends(get_s
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")
 
-
-    # ✅ BACKWARD COMPATIBILITY
     if not record.pico_json and record.pico_text:
-        import re
         text = record.pico_text
-
-        def extract_section(label, text):
-            pattern = rf'\*\s*\*\*{label}:\*\*\s*(.*?)(?=\*\s*\*\*|\Z)'
-            match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
-            return match.group(1).strip() if match else text[:300]
-
         record.pico_json = {
-            "P": extract_section("Population", text),
-            "I": extract_section("Intervention", text),
-            "C": extract_section("Comparison", text),
-            "O": extract_section("Outcome", text),
+            "P": extract_pico_section("Population", text),
+            "I": extract_pico_section("Intervention", text),
+            "C": extract_pico_section("Comparison", text),
+            "O": extract_pico_section("Outcome", text),
         }
 
     return record
+
 
 # =========================
 # 🔹 RECORDS BY NICHE
 # =========================
 @app.get("/api/records")
 async def get_records(niche: str, session: Session = Depends(get_session)):
-    """
-    Returns records for a given niche, used by ExtractPaperPage to populate
-    the record selector dropdown.
-    Response: { "records": [{ "external_id", "title", "source" }] }
-    """
     try:
         results = session.exec(
             select(ResearchRecord)
             .where(ResearchRecord.niche == niche)
             .order_by(ResearchRecord.year.desc())
         ).all()
- 
+
         return {
             "records": [
                 {
@@ -390,27 +375,20 @@ async def get_records(niche: str, session: Session = Depends(get_session)):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-        
+
+
 # =========================
-# 🔹 SEARCH SOURCE (NEW)
+# 🔹 SEARCH SOURCE
 # =========================
 @app.post("/api/search")
 async def search_sources(req: SearchRequest, db: Session = Depends(get_session)):
-    """
-    New unified search endpoint with caching.
-    """
     print(f"\n🚀 SEARCH REQUEST | Query: {req.query} | Sources: {req.sources}")
 
     current_provider = req.provider or os.getenv("LLM_PROVIDER", "ollama")
-    
-    # Temporarily set environment for summarize_text logic
     os.environ["LLM_PROVIDER"] = current_provider
 
     response_data = []
 
-    # =====================================================
-    # PUBMED
-    # =====================================================
     if "pubmed" in req.sources:
         pubmed_results = []
         try:
@@ -429,7 +407,8 @@ async def search_sources(req: SearchRequest, db: Session = Depends(get_session))
                     continue
 
                 fetch_results = fetch_abstracts([p_id], year=req.year)
-                if not fetch_results: continue
+                if not fetch_results:
+                    continue
                 abstract_data = fetch_results[0]
                 abstract = abstract_data["abstract"]
                 year = abstract_data["year"]
@@ -437,12 +416,8 @@ async def search_sources(req: SearchRequest, db: Session = Depends(get_session))
                 try:
                     summary = summarize_text(abstract)
                     if "Error:" not in summary:
-                        # Use SQLAlchemy core for on_conflict since SQLModel doesn't have it natively
-                        from sqlalchemy import text
+                        from sqlalchemy import text as sa_text
                         from datetime import datetime
-                        
-                        # We use the session's connection to execute direct SQL or use the engine
-                        # For simplicity, let's use the provided logic but adapted for SQLModel session
                         stmt = insert(CachedSummary).values(
                             pubmed_id=p_id, query=req.query, abstract=abstract,
                             summary=summary, provider=current_provider, created_at=datetime.utcnow()
@@ -464,9 +439,6 @@ async def search_sources(req: SearchRequest, db: Session = Depends(get_session))
             print(f"❌ PubMed Error: {e}")
         response_data.append({"source": "pubmed", "data": pubmed_results})
 
-    # =====================================================
-    # CLINICAL TRIALS
-    # =====================================================
     if "clinicaltrials" in req.sources:
         ct_results = []
         try:
@@ -474,7 +446,8 @@ async def search_sources(req: SearchRequest, db: Session = Depends(get_session))
             for trial in trials:
                 paper_id = trial.get("id")
                 abstract = trial.get("abstract")
-                if not paper_id or not abstract: continue
+                if not paper_id or not abstract:
+                    continue
 
                 cached_entry = None if req.bypass_cache else db.query(CachedClinicalTrial).filter(
                     CachedClinicalTrial.nct_id == paper_id,
@@ -517,16 +490,13 @@ async def search_sources(req: SearchRequest, db: Session = Depends(get_session))
 
 
 # =========================
-# 🔹 BACKGROUND EXTRACTION (FIXED)
+# 🔹 BACKGROUND EXTRACTION
 # =========================
 @app.post("/api/tools/extract-pubmed")
 def trigger_pubmed_extraction(pmid: str, background_tasks: BackgroundTasks, db: Session = Depends(get_session)):
-    # Local worker instead of external script
     def worker():
         abs_text = fetch_abstracts([pmid])[0]
         summary = summarize_text(abs_text)
-        # Update or create record
-        # (Implementation omitted for brevity, but this replaces the script)
         print(f"Background extraction for {pmid} complete.")
 
     background_tasks.add_task(worker)
