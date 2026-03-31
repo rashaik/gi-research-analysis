@@ -61,10 +61,10 @@ export default function App() {
         backendOk={backendOk} 
       />
       
-      <main className="flex-1 overflow-hidden h-screen overflow-y-auto">
+      <main className="flex-1 overflow-hidden h-screen overflow-y-auto pt-14 lg:pt-0">
         {/* Full width for explorer, max-w for others */}
         {['explorer', 'pipeline', 'methodology'].includes(page) ? renderContent() : (
-          <div className="max-w-7xl mx-auto p-12">
+          <div className="max-w-7xl mx-auto p-4 lg:p-12">
             {renderContent()}
           </div>
         )}
