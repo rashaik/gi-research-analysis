@@ -342,19 +342,20 @@ async def get_research_detail(external_id: str, session: Session = Depends(get_s
 
     # ✅ BACKWARD COMPATIBILITY
     if not record.pico_json and record.pico_text:
-    import re
-    text = record.pico_text
-    def extract_section(label, text):
-        pattern = rf'\*\s*\*\*{label}:\*\*\s*(.*?)(?=\*\s*\*\*|\Z)'
-        match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
-        return match.group(1).strip() if match else text[:300]
+        import re
+        text = record.pico_text
 
-    record.pico_json = {
-        "P": extract_section("Population", text),
-        "I": extract_section("Intervention", text),
-        "C": extract_section("Comparison", text),
-        "O": extract_section("Outcome", text),
-    }
+        def extract_section(label, text):
+            pattern = rf'\*\s*\*\*{label}:\*\*\s*(.*?)(?=\*\s*\*\*|\Z)'
+            match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
+            return match.group(1).strip() if match else text[:300]
+
+        record.pico_json = {
+            "P": extract_section("Population", text),
+            "I": extract_section("Intervention", text),
+            "C": extract_section("Comparison", text),
+            "O": extract_section("Outcome", text),
+        }
 
     return record
 
