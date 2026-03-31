@@ -6,6 +6,7 @@ import {
 import { Chart } from 'react-chartjs-2';
 import { Card, Badge, StatCard } from './Cards';
 import { C, T } from '../theme/tokens';
+import { API_BASE } from '../config';
 
 // Register Chart.js components
 ChartJS.register(
@@ -18,7 +19,6 @@ export default function TemporalLagPage() {
   useEffect(() => {
     const fetchChartData = async () => {
       try {
-        const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
         const response = await axios.get(`${API_BASE}/api/analytics/temporal-mismatch`);
         const rawData = response.data;
 
@@ -80,7 +80,6 @@ export default function TemporalLagPage() {
         <h2 className="font-serif font-black text-[#1E3A8A] mt-4 mb-4" style={{ fontSize: T.h1 }}>
           The Temporal Lag: Reactive Research
         </h2>
-        {/* ... */}
         <p className="text-[#64748B] max-w-3xl leading-relaxed" style={{ fontSize: T.body }}>
           An empirical analysis of the delay between real-world mortality spikes and clinical trial initiations. 
           Evidence suggests that current MASLD/MASH research is predominantly **reactive** rather than predictive.

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Card, Badge } from './Cards';
 import { T } from '../theme/tokens';
+import { API_BASE } from '../config';
 
 export default function ExtractRecentPage() {
   const [query, setQuery] = useState('');
@@ -53,8 +54,6 @@ export default function ExtractRecentPage() {
     setDebugMsg("Initializing multi-source search...");
 
     try {
-      // const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
-      const API_BASE = import.meta.env.VITE_API_BASE || '';
       const response = await axios.post(`${API_BASE}/api/search`, {
         query: query,
         provider: provider,
@@ -204,7 +203,6 @@ export default function ExtractRecentPage() {
       {/* RESULTS DISPLAY */}
       {results.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in slide-in-from-bottom-5 duration-700 mt-8">
-          {/* PubMed Column */}
           <div className="space-y-6">
             <h3 className="text-[11px] font-black text-brand-navy uppercase tracking-[0.2em] border-b pb-2">
               PubMed Results ({pubmedResults.length})
@@ -212,7 +210,6 @@ export default function ExtractRecentPage() {
             {pubmedResults.map((res, i) => <ResultCard key={i} res={res} />)}
           </div>
           
-          {/* Clinical Trials Column */}
           <div className="space-y-6">
             <h3 className="text-[11px] font-black text-amber-600 uppercase tracking-[0.2em] border-b pb-2">
               Clinical Trials ({ctResults.length})
@@ -226,7 +223,6 @@ export default function ExtractRecentPage() {
 }
 
 function ResultCard({ res }) {
-  // Parsing logic for PICO breakdown
   const picoLines = res.summary
     ? res.summary
         .split(/(?=P \(Population\)|I \(Intervention\)|C \(Comparison\)|O \(Outcome\))/)
@@ -236,7 +232,6 @@ function ResultCard({ res }) {
 
   return (
     <Card className="p-0 border border-slate-100 bg-white hover:border-brand-blue transition-all shadow-sm overflow-hidden relative">
-      {/* Card Header */}
       <div className="p-4 border-b border-slate-50 flex items-start justify-between bg-slate-50/50">
         <div className="flex items-center gap-2">
           <Badge variant={res.source === 'PubMed' ? 'primary' : 'warning'}>{res.paper_id}</Badge>
@@ -252,13 +247,11 @@ function ResultCard({ res }) {
         </div>
       </div>
 
-      {/* Card Content */}
       <div className="p-6">
         <p className="text-sm text-slate-700 leading-relaxed italic mb-6">
           "{res.abstract.substring(0, 280)}..."
         </p>
 
-        {/* ⚡ PICO BOX */}
         <div className="p-5 bg-blue-50/40 rounded-2xl border border-blue-100 ai-glow">
           <div className="flex items-center gap-2 mb-4">
             <span className="text-xs animate-bounce">⚡</span>
@@ -268,11 +261,7 @@ function ResultCard({ res }) {
           {picoLines.length > 0 ? (
             <div className="space-y-3">
               {picoLines.map((line, i) => (
-                <div 
-                  key={i} 
-                  className="pico-line" 
-                  style={{ animationDelay: `${i * 0.15}s` }}
-                >
+                <div key={i} className="pico-line" style={{ animationDelay: `${i * 0.15}s` }}>
                   <p className="text-xs text-slate-800 leading-relaxed font-semibold border-l-2 border-brand-blue/30 pl-3">
                     {line}
                   </p>

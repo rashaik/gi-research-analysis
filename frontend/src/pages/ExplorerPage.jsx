@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Badge } from './Cards';
+import { API_BASE } from '../config';
 
 export default function ExplorerPage() {
   const [records, setRecords] = useState([]);
@@ -12,9 +13,6 @@ export default function ExplorerPage() {
   // Filters
   const [filterSource, setFilterSource] = useState("All");
   const [filterNiche, setFilterNiche] = useState("All");
-
-  // const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
-  const API_BASE = import.meta.env.VITE_API_BASE || '';
 
   // Fetch all records
   useEffect(() => {

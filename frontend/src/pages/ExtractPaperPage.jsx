@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Card, Badge } from './Cards';
 import { T } from '../theme/tokens';
+import { API_BASE } from '../config';
 
 const NICHES = ['Lean_MASLD', 'MASH_Fibrosis', 'MASLD_HCC'];
-// const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
-const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 export default function ExtractPaperPage() {
   const [sourceFilter, setSourceFilter] = useState('ALL');
@@ -19,14 +18,12 @@ export default function ExtractPaperPage() {
   const [error, setError] = useState(null);
   const [debugMsg, setDebugMsg] = useState('');
 
-  // Apply filtering logic (Defined at top level for use in effects and JSX)
   const filteredRecords = records.filter(r => {
     if (sourceFilter === 'ALL') return true;
     const normalizedSource = r.source === 'ClinicalTrials' ? 'CT' : 'PubMed';
     return normalizedSource === sourceFilter;
   });
 
-  // Load records whenever niche changes
   useEffect(() => {
     const loadRecords = async () => {
       setLoadingRecords(true);
@@ -43,7 +40,6 @@ export default function ExtractPaperPage() {
         });
         const data = res.data.records || [];
         setRecords(data);
-        // Auto-select first record
         if (data.length > 0) setSelectedId(data[0].external_id);
       } catch (err) {
         setError('Failed to load records for this niche.');
@@ -64,7 +60,6 @@ export default function ExtractPaperPage() {
     const isPMID = selectedId.includes('_PMID_');
     const source = isPMID ? 'PMID' : 'NCT';
     
-    // Extract numeric ID or NCT ID safely
     const rawId = isPMID
       ? selectedId.split('_PMID_')[1]
       : `NCT${selectedId.split('_NCT_')[1]}`;
@@ -138,8 +133,6 @@ export default function ExtractPaperPage() {
               onChange={(e) => {
                 const newSource = e.target.value;
                 setSourceFilter(newSource);
-                
-                // Immediately update selectedId to the first record in the NEW filter
                 const nextFiltered = records.filter(r => {
                   if (newSource === 'ALL') return true;
                   const norm = r.source === 'ClinicalTrials' ? 'CT' : 'PubMed';
@@ -196,7 +189,6 @@ export default function ExtractPaperPage() {
           </div>
         </div>
 
-        {/* Selected record pill */}
         {selectedRecord && (
           <div className="mt-4 flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
             <span className="text-[10px] text-slate-400 font-mono">Ready:</span>
@@ -236,20 +228,17 @@ export default function ExtractPaperPage() {
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Prefer the title from our records list if the result title is generic */}
               <div>
                 <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">
                   Full Document Title
                 </p>
                 <h3 className="text-xl font-bold text-[#1E3A8A] leading-snug">
-                  {/* If result.title starts with "Paper ", use the title we already have in our records list */}
                   {result.title && !result.title.startsWith('Paper') 
                     ? result.title 
                     : (records.find(r => r.external_id === result.external_id)?.title || result.title)}
                 </h3>
               </div>
 
-              {/* Content Section */}
               {result.full_text && (
                 <div>
                   <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">
@@ -261,7 +250,6 @@ export default function ExtractPaperPage() {
                 </div>
               )}
 
-              {/* External Link */}
               {result.external_id && (
                 <a
                   href={
