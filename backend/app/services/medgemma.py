@@ -2,6 +2,9 @@ import os
 import requests
 import json
 import re
+from requests.exceptions import ReadTimeout
+import time
+
 
 def _clean_json_output(raw_text: str):
     """
@@ -60,7 +63,14 @@ def extract_pico(text: str, backend: str = None):
     if backend == "runpod":
         # Your specific RunPod endpoint from the screenshot
         url = os.getenv("RUNPOD_ENDPOINT", "https://api.runpod.ai/v2/73o59xybq4qskk/openai/v1/chat/completions")
+
+        # url = os.getenv("RUNPOD_ENDPOINT")  # should be .../openai/v1/chat/completions
+        if not url:
+            raise ValueError("Missing RUNPOD_ENDPOINT (must include /openai/v1/chat/completions)")
+
         api_key = os.getenv("RUNPOD_API_KEY")
+        if not api_key:
+            raise ValueError("Missing RUNPOD_API_KEY")
         
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -68,21 +78,24 @@ def extract_pico(text: str, backend: str = None):
         }
 
         payload = {
-            "model": "google/medgemma-4b-it",
+            # "model": "google/medgemma-4b-it",
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.1,
             "max_tokens": 512
         }
 
         try:
-            # Note: vLLM on RunPod uses the 'choices' structure
-            r = requests.post(url, json=payload, headers=headers, timeout=120)
+            r = requests.post(url, json=payload, headers=headers, timeout=(10, 600))
+
+        except ReadTimeout:
+            time.sleep(2)
+            r = requests.post(url, json=payload, headers=headers, timeout=(10, 600))
+
             r.raise_for_status()
             response_json = r.json()
-            
-            # Extract content from OpenAI-style response
-            content = response_json['choices'][0]['message']['content']
+            content = response_json["choices"][0]["message"]["content"]
             return _clean_json_output(content)
+
         except Exception as e:
             return {"P": f"RunPod Error: {str(e)}", "I": "N/A", "C": "N/A", "O": "N/A"}
 

@@ -182,29 +182,32 @@ async def runpod_status():
 
 @app.post("/api/status/warm")
 async def trigger_warmup():
-    """Wakes up the RunPod worker if it's cold."""
-    # You can move the warm_worker logic here
     endpoint_id = os.getenv("RUNPOD_ENDPOINT_ID")
     api_key = os.getenv("RUNPOD_API_KEY")
-    
-    url = f"https://api.runpod.ai/v2/{endpoint_id}/runsync"
+    if not endpoint_id or not api_key:
+        raise HTTPException(status_code=500, detail="Missing RUNPOD_ENDPOINT_ID or RUNPOD_API_KEY")
+
+    url = f"https://api.runpod.ai/v2/{endpoint_id}/run"
     headers = {"Authorization": f"Bearer {api_key}"}
     payload = {
         "input": {
-            "model": "google/medgemma-4b-it",
             "messages": [{"role": "user", "content": "ping"}],
-            "max_tokens": 1
+            "max_tokens": 1,
+            "temperature": 0.0
         }
     }
-    
-    async with httpx.AsyncClient() as client:
+
+    async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=5.0)) as client:
         try:
-            # We don't wait for the result, just fire and forget to wake it up
-            await client.post(url, json=payload, headers=headers, timeout=2.0)
-        except Exception:
-            pass 
-            
-    return {"status": "pulse_sent", "message": "GPU warmup triggered"}
+            r = await client.post(url, json=payload, headers=headers)
+            r.raise_for_status()
+            # Optional: return job id so you can observe it
+            return {"status": "pulse_sent", "job": r.json()}
+        except httpx.HTTPError as e:
+            # If you truly want "fire and forget", you can still return 200 here,
+            # but it's better to surface the failure during warmup.
+            raise HTTPException(status_code=502, detail=f"Runpod warmup failed: {e}")
+
 
 # =========================
 # 🔹 ANALYTICS
