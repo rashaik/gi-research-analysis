@@ -16,12 +16,14 @@ from app.models import MortalityData, ResearchRecord
 from app.services.pubmed import run_pubmed_extraction
 from app.services.medgemma import extract_pico
 from app.services.analytics_service import get_temporal_mismatch_stats, get_niche_mortality_summary
+from app.services.runpod_manager import warm_worker, cmd_warm, cmd_status
 from app.extract_recent_abstracts import (
     search_pubmed, fetch_abstracts, fetch_clinical_trials, summarize_text
 )
 from app.database_recent_extracts import CachedSummary, CachedClinicalTrial
 from sqlalchemy.dialects.postgresql import insert
 
+import httpx # Recommended: pip install httpx
 
 # =========================
 # 🔹 APP LIFECYCLE
@@ -65,7 +67,8 @@ class ExtractParams(BaseModel):
     exclude_reviews: bool = True
     year_min: int = 2024
     year_max: int = 2026
-    llm_backend: str = "ollama"
+    # Default to the environment variable, fallback to ollama
+    llm_backend: str = os.getenv("MEDGEMMA_BACKEND", "ollama")
 
 
 class SearchRequest(BaseModel):
@@ -91,26 +94,36 @@ class SourceResult(BaseModel):
 
 
 # =========================
-# 🔹 HEALTH & STATUS
+# 🔹 HEALTH
 # =========================
 @app.get("/api/health", response_model=HealthResponse)
 async def health_check():
+    # Use your existing LLM_PROVIDER variable
+    provider = os.getenv("LLM_PROVIDER", "ollama")
     return {
         "status": "online",
-        "engine": os.getenv("MEDGEMMA_BACKEND", "ollama"),
+        "engine": provider,
         "model": os.getenv("OLLAMA_MODEL", "medgemma-gi")
     }
 
 class StatusResponse(BaseModel):
     stage: str    # "starting_gpu" | "loading_model" | "online" | "offline"
-    label: str    # Human-readable label shown in the sidebar
-    ok: bool      # True only when stage == "online"
-    workers: dict = {}
-    jobs: dict    = {}
+    label: str    # Human-readable label
+    ok: bool      
+    workers: Dict = {}
+    jobs: Dict = {}
 
 @app.get("/api/status", response_model=StatusResponse)
 async def runpod_status():
+    api_key = os.getenv("RUNPOD_API_KEY")
     endpoint_id = os.getenv("RUNPOD_ENDPOINT_ID", "")
+    provider = os.getenv("LLM_PROVIDER", "ollama") # Added this
+
+    # Check provider instead of just checking for keys
+    if provider == "ollama":
+        return StatusResponse(stage="online", label="Local Engine Online", ok=True)
+        
+    # 1. Parse Endpoint ID from URL if not explicitly set
     if not endpoint_id:
         full_url = os.getenv("RUNPOD_ENDPOINT", "")
         parts = [p for p in full_url.split("/") if p]
@@ -120,30 +133,78 @@ async def runpod_status():
         except (ValueError, IndexError):
             pass
 
-    if not endpoint_id or not os.getenv("RUNPOD_API_KEY"):
-        return StatusResponse(stage="online", label="MedGemma is Online", ok=True)
+    # 2. Fallback for Local/Ollama development
+    if not endpoint_id or not api_key:
+        return StatusResponse(stage="online", label="Local Engine Online", ok=True)
 
+    # 3. Async call to RunPod Health API
     health_url = f"https://api.runpod.ai/v2/{endpoint_id}/health"
-    headers = {"Authorization": f"Bearer {os.getenv('RUNPOD_API_KEY')}", "Content-Type": "application/json"}
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
 
-    import requests as req
     try:
-        r = req.get(health_url, headers=headers, timeout=10)
-        r.raise_for_status()
-        data = r.json()
-    except Exception:
-        return StatusResponse(stage="starting_gpu", label="Starting GPU", ok=False)
+        async with httpx.AsyncClient() as client:
+            r = await client.get(health_url, headers=headers, timeout=5.0)
+            r.raise_for_status()
+            data = r.json()
+    except Exception as e:
+        print(f"⚠️ RunPod Health Check Failed: {e}")
+        return StatusResponse(stage="starting_gpu", label="Starting GPU...", ok=False)
 
+    # 4. Refined Logic for Stage determination
     workers = data.get("workers", {})
-    idle, ready, running = workers.get("idle", 0), workers.get("ready", 0), workers.get("running", 0)
-    initializing, throttled, unhealthy = workers.get("initializing", 0), workers.get("throttled", 0), workers.get("unhealthy", 0)
+    idle = workers.get("idle", 0)
+    ready = workers.get("ready", 0)
+    running = workers.get("running", 0)
+    initializing = workers.get("initializing", 0)
+    throttled = workers.get("throttled", 0)
+    unhealthy = workers.get("unhealthy", 0)
 
-    if (idle + ready + running) > 0: stage, label = "online", "MedGemma is Online"
-    elif (initializing + throttled) > 0: stage, label = "loading_model", "Loading Model"
-    elif unhealthy > 0: stage, label = "offline", "Backend Offline"
-    else: stage, label = "starting_gpu", "Starting GPU"
+    # Priority 1: If we have ready or idle workers, we are online
+    if (idle + ready) > 0:
+        stage, label = "online", "MedGemma is Online"
+    # Priority 2: If we are still initializing
+    elif (initializing + throttled) > 0:
+        stage, label = "loading_model", "Loading Model..."
+    # Priority 3: If everything is unhealthy
+    elif unhealthy > 0 and (idle + ready + running) == 0:
+        stage, label = "offline", "Backend Offline"
+    # Priority 4: Default to starting
+    else:
+        stage, label = "starting_gpu", "Starting GPU..."
 
-    return StatusResponse(stage=stage, label=label, ok=(stage == "online"), workers=workers, jobs=data.get("jobs", {}))
+    return StatusResponse(
+        stage=stage,
+        label=label,
+        ok=(stage == "online"),
+        workers=workers,
+        jobs=data.get("jobs", {})
+    )
+
+@app.post("/api/status/warm")
+async def trigger_warmup():
+    """Wakes up the RunPod worker if it's cold."""
+    # You can move the warm_worker logic here
+    endpoint_id = os.getenv("RUNPOD_ENDPOINT_ID")
+    api_key = os.getenv("RUNPOD_API_KEY")
+    
+    url = f"https://api.runpod.ai/v2/{endpoint_id}/runsync"
+    headers = {"Authorization": f"Bearer {api_key}"}
+    payload = {
+        "input": {
+            "model": "google/medgemma-4b-it",
+            "messages": [{"role": "user", "content": "ping"}],
+            "max_tokens": 1
+        }
+    }
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            # We don't wait for the result, just fire and forget to wake it up
+            await client.post(url, json=payload, headers=headers, timeout=2.0)
+        except Exception:
+            pass 
+            
+    return {"status": "pulse_sent", "message": "GPU warmup triggered"}
 
 # =========================
 # 🔹 ANALYTICS
@@ -185,6 +246,7 @@ async def get_timeline_stats(session: Session = Depends(get_session)):
 
         mort_map = {str(int(y)): d for y, d in mortality_results}
         res_map = {str(int(y)): c for y, c in research_results}
+
         labels = [str(year) for year in range(1999, 2025)]
 
         return {
@@ -192,6 +254,7 @@ async def get_timeline_stats(session: Session = Depends(get_session)):
             "cdc": [mort_map.get(y, 0) for y in labels],
             "research": [res_map.get(y, 0) for y in labels]
         }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -204,7 +267,8 @@ async def extract_recent(params: ExtractParams, session: Session = Depends(get_s
     try:
         results = []
         source_label = "PubMed" if params.source == "PubMed" else "ClinicalTrials"
-        
+        print(f"--- 🚀 Starting Extraction Pipeline: {source_label} | {params.niche} ---")
+
         if params.source == "PubMed":
             pubmed_ids = search_pubmed(params.niche, max_results=params.max_abstracts)
             abstracts = fetch_abstracts(pubmed_ids)
@@ -215,16 +279,24 @@ async def extract_recent(params: ExtractParams, session: Session = Depends(get_s
             results = [{"source": "ClinicalTrials", "nct_id": t["id"], "abstract": t["abstract"], "title": f"Trial {t['id']}", "year": 2024}
                        for t in trials]
 
+        print(f"--- 📥 Extraction Engine returned {len(results)} raw records ---")
+
         final_records = []
+        data_dir = "/app/data"
+        if not os.path.exists(data_dir):
+            data_dir = "data"
+        os.makedirs(data_dir, exist_ok=True)
+
+        new_count = 0
+        existing_count = 0
+
         for res in results:
             sid = res.get('pmid') or res.get('nct_id')
-            if not sid: continue
+            if not sid or sid == "N/A" or sid == "":
+                continue
 
             ext_id = f"{res['source']}_{sid}"
-            pico_data = extract_pico(res["abstract"], backend=params.llm_backend)
-            
-            # Ensure pico_json is a real dict to prevent "Not Synchronized" errors
-            pico_json = pico_data if isinstance(pico_data, dict) else {"error": "Invalid Format"}
+            pico_json = extract_pico(res["abstract"], backend=params.llm_backend)
 
             record_data = {
                 "external_id": ext_id,
@@ -232,26 +304,37 @@ async def extract_recent(params: ExtractParams, session: Session = Depends(get_s
                 "title": res["title"],
                 "abstract": res["abstract"],
                 "niche": params.niche,
-                "year": int(res["year"]),
+                "year": int(res["year"]) if str(res["year"]).isdigit() else 2024,
                 "pico_json": pico_json,
-                "pico_text": str(pico_data)
+                "pico_text": str(pico_json)
             }
 
-            existing = session.exec(select(ResearchRecord).where(ResearchRecord.external_id == ext_id)).first()
+            existing = session.exec(
+                select(ResearchRecord).where(ResearchRecord.external_id == ext_id)
+            ).first()
+
             if not existing:
                 db_record = ResearchRecord(**record_data)
                 session.add(db_record)
                 final_records.append(db_record)
+                new_count += 1
             else:
                 final_records.append(existing)
+                existing_count += 1
 
         session.commit()
+        print(f"--- ✅ Sync Complete: {new_count} new, {existing_count} existing records ---")
         return {"results": final_records}
+
     except Exception as e:
         session.rollback()
+        import traceback
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
+
 from app.services.paper_service import fetch_pubmed_full_text, fetch_ct_full_text
+
 
 @app.post("/api/extract/paper")
 async def extract_paper(request: dict, session: Session = Depends(get_session)):
@@ -259,11 +342,37 @@ async def extract_paper(request: dict, session: Session = Depends(get_session)):
     niche = request.get("niche", "Manual_Extract")
     paper_id = str(request.get("id", "")).strip()
 
+    if not paper_id:
+        raise HTTPException(status_code=400, detail="Missing ID")
+
+    if source == "PMID" and not paper_id.isdigit():
+        raise HTTPException(status_code=400, detail=f"Invalid PMID format: '{paper_id}'. Must be numeric.")
+    if source == "NCT" and not paper_id.startswith("NCT"):
+        raise HTTPException(status_code=400, detail=f"Invalid NCT ID format: '{paper_id}'. Must start with 'NCT'.")
+
     try:
-        full_text = fetch_pubmed_full_text(paper_id) if source == "PMID" else fetch_ct_full_text(paper_id)
+        if source == "PMID":
+            full_text = fetch_pubmed_full_text(paper_id)
+        else:
+            full_text = fetch_ct_full_text(paper_id)
+
         ext_id = f"{source}_{paper_id}"
-        
-        record = session.exec(select(ResearchRecord).where(ResearchRecord.external_id == ext_id)).first()
+
+        data_dir = "/app/data"
+        if not os.path.exists(data_dir):
+            data_dir = "data"
+        os.makedirs(data_dir, exist_ok=True)
+
+        filename = f"{ext_id}_paper.txt"
+        file_path = os.path.join(data_dir, filename)
+
+        with open(file_path, 'w') as f:
+            f.write(full_text)
+
+        record = session.exec(
+            select(ResearchRecord).where(ResearchRecord.external_id == ext_id)
+        ).first()
+
         if record:
             record.full_text = full_text
             session.add(record)
@@ -280,7 +389,14 @@ async def extract_paper(request: dict, session: Session = Depends(get_session)):
             session.add(record)
 
         session.commit()
-        return {"external_id": ext_id, "title": record.title, "full_text": full_text}
+        return {
+            "external_id": ext_id,
+            "title": record.title,
+            "source": record.source,
+            "full_text": full_text,
+            "filename": filename
+        }
+
     except Exception as e:
         session.rollback()
         raise HTTPException(status_code=500, detail=str(e))
@@ -289,48 +405,80 @@ async def extract_paper(request: dict, session: Session = Depends(get_session)):
 # =========================
 # 🔹 EXPLORER APIs
 # =========================
-
-# FIXED: Re-added the exact alias the frontend expects for niches
-@app.get("/api/records")
-async def get_records_by_niche(niche: str, session: Session = Depends(get_session)):
-    """Handles the niche-specific filtering to fix the 404 error."""
-    try:
-        statement = select(ResearchRecord).where(ResearchRecord.niche == niche).order_by(ResearchRecord.year.desc())
-        results = session.exec(statement).all()
-        # Return exact structure frontend expects
-        return {"records": results} if results else {"records": [], "message": "No matches found"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.get("/api/research/list")
 async def list_research(session: Session = Depends(get_session)):
     try:
-        results = session.exec(select(ResearchRecord).order_by(ResearchRecord.year.desc())).all()
+        results = session.exec(
+            select(ResearchRecord).order_by(ResearchRecord.year.desc())
+        ).all()
+
+        for record in results:
+            if not record.source:
+                record.source = (
+                    "ClinicalTrials" if "NCT" in record.external_id else "PubMed"
+                )
+
         return results
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 def extract_pico_section(label: str, text: str) -> str:
     pattern = rf'\*\s*\*\*{label}:\*\*\s*(.*?)(?=\*\s*\*\*|\Z)'
     match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
     return match.group(1).strip() if match else text[:300]
 
+
 @app.get("/api/research/{external_id}")
 async def get_research_detail(external_id: str, session: Session = Depends(get_session)):
-    record = session.exec(select(ResearchRecord).where(ResearchRecord.external_id == external_id)).first()
+    record = session.exec(
+        select(ResearchRecord).where(
+            ResearchRecord.external_id == external_id
+        )
+    ).first()
+
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")
 
-    # Fix for the "Not Synchronized" visual error
     if not record.pico_json and record.pico_text:
         text = record.pico_text
         record.pico_json = {
-            "population": extract_pico_section("Population", text),
-            "intervention": extract_pico_section("Intervention", text),
-            "comparison": extract_pico_section("Comparison", text),
-            "outcome": extract_pico_section("Outcome", text),
+            "P": extract_pico_section("Population", text),
+            "I": extract_pico_section("Intervention", text),
+            "C": extract_pico_section("Comparison", text),
+            "O": extract_pico_section("Outcome", text),
         }
+
     return record
+
+
+# =========================
+# 🔹 RECORDS BY NICHE
+# =========================
+@app.get("/api/records")
+async def get_records(niche: str, session: Session = Depends(get_session)):
+    try:
+        results = session.exec(
+            select(ResearchRecord)
+            .where(ResearchRecord.niche == niche)
+            .order_by(ResearchRecord.year.desc())
+        ).all()
+
+        return {
+            "records": [
+                {
+                    "external_id": r.external_id,
+                    "title": r.title or "",
+                    "source": r.source or (
+                        "ClinicalTrials" if "NCT" in r.external_id else "PubMed"
+                    ),
+                }
+                for r in results
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # =========================
@@ -338,8 +486,11 @@ async def get_research_detail(external_id: str, session: Session = Depends(get_s
 # =========================
 @app.post("/api/search")
 async def search_sources(req: SearchRequest, db: Session = Depends(get_session)):
+    print(f"\n🚀 SEARCH REQUEST | Query: {req.query} | Sources: {req.sources}")
+
     current_provider = req.provider or os.getenv("LLM_PROVIDER", "ollama")
     os.environ["LLM_PROVIDER"] = current_provider
+
     response_data = []
 
     if "pubmed" in req.sources:
@@ -347,12 +498,49 @@ async def search_sources(req: SearchRequest, db: Session = Depends(get_session))
         try:
             pubmed_ids = search_pubmed(req.query, max_results=req.max_results, year=req.year)
             for p_id in pubmed_ids:
+                cached_entry = None if req.bypass_cache else db.query(CachedSummary).filter(
+                    CachedSummary.pubmed_id == p_id,
+                    CachedSummary.provider == current_provider
+                ).first()
+
+                if cached_entry:
+                    pubmed_results.append(PaperResult(
+                        paper_id=p_id, abstract=cached_entry.abstract,
+                        summary=cached_entry.summary, cached=True
+                    ))
+                    continue
+
                 fetch_results = fetch_abstracts([p_id], year=req.year)
-                if not fetch_results: continue
+                if not fetch_results:
+                    continue
                 abstract_data = fetch_results[0]
-                summary = summarize_text(abstract_data["abstract"])
-                pubmed_results.append(PaperResult(paper_id=p_id, abstract=abstract_data["abstract"], summary=summary, year=abstract_data["year"], cached=False))
-        except Exception: pass
+                abstract = abstract_data["abstract"]
+                year = abstract_data["year"]
+
+                try:
+                    summary = summarize_text(abstract)
+                    if "Error:" not in summary:
+                        from sqlalchemy import text as sa_text
+                        from datetime import datetime
+                        stmt = insert(CachedSummary).values(
+                            pubmed_id=p_id, query=req.query, abstract=abstract,
+                            summary=summary, provider=current_provider, created_at=datetime.utcnow()
+                        )
+                        stmt = stmt.on_conflict_do_update(
+                            index_elements=['pubmed_id', 'provider'],
+                            set_={"summary": summary, "query": req.query, "created_at": datetime.utcnow()}
+                        )
+                        db.execute(stmt)
+                        db.commit()
+                except Exception as e:
+                    db.rollback()
+                    summary = f"System Error: {str(e)}"
+
+                pubmed_results.append(PaperResult(
+                    paper_id=p_id, abstract=abstract, summary=summary, year=year, cached=False
+                ))
+        except Exception as e:
+            print(f"❌ PubMed Error: {e}")
         response_data.append({"source": "pubmed", "data": pubmed_results})
 
     if "clinicaltrials" in req.sources:
@@ -360,9 +548,46 @@ async def search_sources(req: SearchRequest, db: Session = Depends(get_session))
         try:
             trials = fetch_clinical_trials(req.query, page_size=req.max_results, year=req.year)
             for trial in trials:
-                summary = summarize_text(trial.get("abstract", ""))
-                ct_results.append(PaperResult(paper_id=trial["id"], abstract=trial["abstract"], summary=summary, year=trial.get("year", 2024), cached=False))
-        except Exception: pass
+                paper_id = trial.get("id")
+                abstract = trial.get("abstract")
+                if not paper_id or not abstract:
+                    continue
+
+                cached_entry = None if req.bypass_cache else db.query(CachedClinicalTrial).filter(
+                    CachedClinicalTrial.nct_id == paper_id,
+                    CachedClinicalTrial.provider == current_provider
+                ).first()
+
+                if cached_entry:
+                    ct_results.append(PaperResult(
+                        paper_id=paper_id, abstract=cached_entry.abstract,
+                        summary=cached_entry.summary, year=trial.get("year", 2024), cached=True
+                    ))
+                    continue
+
+                try:
+                    summary = summarize_text(abstract)
+                    if "Error:" not in summary:
+                        from datetime import datetime
+                        stmt = insert(CachedClinicalTrial).values(
+                            nct_id=paper_id, query=req.query, abstract=abstract,
+                            summary=summary, provider=current_provider, created_at=datetime.utcnow()
+                        )
+                        stmt = stmt.on_conflict_do_update(
+                            index_elements=['nct_id', 'provider'],
+                            set_={"summary": summary, "query": req.query, "created_at": datetime.utcnow()}
+                        )
+                        db.execute(stmt)
+                        db.commit()
+                except Exception as e:
+                    db.rollback()
+                    summary = f"System Error: {str(e)}"
+
+                ct_results.append(PaperResult(
+                    paper_id=paper_id, abstract=abstract, summary=summary, year=trial.get("year", 2024), cached=False
+                ))
+        except Exception as e:
+            print(f"❌ ClinicalTrials Error: {e}")
         response_data.append({"source": "clinicaltrials", "data": ct_results})
 
     return {"results": response_data}
@@ -375,7 +600,9 @@ async def search_sources(req: SearchRequest, db: Session = Depends(get_session))
 def trigger_pubmed_extraction(pmid: str, background_tasks: BackgroundTasks, db: Session = Depends(get_session)):
     def worker():
         abs_text = fetch_abstracts([pmid])[0]
-        summarize_text(abs_text)
+        summary = summarize_text(abs_text)
+        print(f"Background extraction for {pmid} complete.")
+
     background_tasks.add_task(worker)
     return {"status": "started", "target": pmid}
 
