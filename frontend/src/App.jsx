@@ -18,21 +18,50 @@ import { API_BASE } from './config';
 export default function App() {
   const [page, setPage] = useState('intro');
   const [backendOk, setBackendOk] = useState(false);
+  // New state to track the 3-stage RunPod lifecycle
+  const [runpodStatus, setRunpodStatus] = useState({
+    stage: 'starting_gpu',
+    label: 'Starting GPU...',
+    ok: false
+  });
 
   useEffect(() => {
+    // 1. Check App Backend (FastAPI Health)
     const checkConnection = async () => {
       try {
         const response = await axios.get(`${API_BASE}/api/health`);
-        if (response.data.status === 'online') {
-          setBackendOk(true);
-        }
+        setBackendOk(response.data.status === 'online');
       } catch (err) {
         setBackendOk(false);
       }
     };
+
+    // 2. Check RunPod / MedGemma Status (The 3-stage logic)
+    const checkRunpod = async () => {
+      try {
+        const response = await axios.get(`${API_BASE}/api/status`);
+        setRunpodStatus(response.data);
+      } catch (err) {
+        setRunpodStatus({ 
+          stage: 'offline', 
+          label: 'Backend Offline', 
+          ok: false 
+        });
+      }
+    };
+
+    // Initial checks
     checkConnection();
-    const interval = setInterval(checkConnection, 10000); 
-    return () => clearInterval(interval);
+    checkRunpod();
+
+    // Set up polling intervals
+    const backendInterval = setInterval(checkConnection, 15000); // 15s for general API
+    const runpodInterval = setInterval(checkRunpod, 8000);      // 8s for model loading feedback
+
+    return () => {
+      clearInterval(backendInterval);
+      clearInterval(runpodInterval);
+    };
   }, [API_BASE]);
 
   const renderContent = () => {
@@ -55,14 +84,15 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
+      {/* Sidebar now receives both status states */}
       <Sidebar 
         activePage={page} 
         onNavigate={setPage} 
         backendOk={backendOk} 
+        runpodStatus={runpodStatus}
       />
       
       <main className="flex-1 overflow-hidden h-screen overflow-y-auto pt-14 lg:pt-0">
-        {/* Full width for explorer, max-w for others */}
         {['explorer', 'pipeline', 'methodology'].includes(page) ? renderContent() : (
           <div className="max-w-7xl mx-auto p-4 lg:p-12">
             {renderContent()}
